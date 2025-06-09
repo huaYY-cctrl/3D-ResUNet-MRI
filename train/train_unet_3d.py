@@ -9,7 +9,6 @@ from monai.losses import DiceCELoss # 导入MONAI的Dice+CE组合损失
 from torch.utils.data import DataLoader
 from generators.image_label_generator import Image_Label_train, Image_Label_valid # 导入自定义数据集类
 
-
 def eval(net, dataloader):
     """验证集评估函数
         参数:
