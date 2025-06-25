@@ -5,60 +5,60 @@ import SimpleITK as sitk
 ########################################################################################################################
 '''
 因为MMS是序列数据，标注可能包含一个或多个序列，并不固定
-preprocess step 2
+Preprocess step 2
 '''
 ########################################################################################################################
 
-# 定义数据路径
-image_folder = "D:\\zhuomian\\MMS\\testing_images\\"  # 原始图像文件夹路径
-mask_folder = "D:\\zhuomian\\MMS\\testing_masks\\"  # 原始掩码文件夹路径
-image_save_folder = "D:\\zhuomian\\MMS\\testing_images_series\\"  # 处理后图像保存路径
-mask_save_folder = "D:\\zhuomian\\MMS\\testing_masks_series\\"  # 处理后掩码保存路径
+# Define data paths
+image_folder = "D:\\PythonProject\\MMS\\test_images\\"  # Path to the original image folder
+mask_folder = "D:\\PythonProject\\MMS\\test_masks\\"  # Path to the original mask folder
+image_save_folder = "D:\\PythonProject\\MMS\\test_images_series\\"  # Path to save processed images
+mask_save_folder = "D:\\PythonProject\\MMS\\test_masks_series\\"  # Path to save processed masks
 
-# 获取文件夹中的所有文件并排序
-image_names = sorted(os.listdir(image_folder))  # 按文件名排序的图像文件列表
-mask_names = sorted(os.listdir(mask_folder))  # 按文件名排序的掩码文件列表
+# Get all files in the folder and sort them
+image_names = sorted(os.listdir(image_folder))  # List of image files sorted by filename
+mask_names = sorted(os.listdir(mask_folder))  # List of mask files sorted by filename
 
-# 遍历所有图像-掩码对
+# Iterate through all image-mask pairs
 for idx in range(len(image_names)):
     print("*******************************************************")
     print("Now is processing: ", image_names[idx])
     image_path = image_folder + image_names[idx]
 
-    # 尝试读取图像，若读取失败则跳过当前文件
+    # Try to read the image, skip the current file if reading fails
     try:
-        image_sitk = sitk.ReadImage(image_path)  # 读取医学图像文件
+        image_sitk = sitk.ReadImage(image_path)  # Read medical image file
     except RuntimeError:
         continue
 
-    image_array = sitk.GetArrayFromImage(image_sitk)  # 将SimpleITK图像转换为NumPy数组
+    image_array = sitk.GetArrayFromImage(image_sitk)  # Convert SimpleITK image to NumPy array
 
-    # 读取对应的掩码文件
+    # Read the corresponding mask file
     mask_path = mask_folder + mask_names[idx]
     mask_sitk = sitk.ReadImage(mask_path)
     mask_array = sitk.GetArrayFromImage(mask_sitk)
 
     ####################################################################################################################
-    # 处理每个序列中的切片
+    # Process each slice in the sequence
     for series_idx in range(image_array.shape[0]):
-        mask_series_idx = mask_array[series_idx]  # 获取当前切片的掩码
+        mask_series_idx = mask_array[series_idx]  # Get the mask for the current slice
 
-        # 检查掩码中是否包含4个不同的标签值(0背景+3个器官)，不满足则跳过
+        # Check if the mask contains 4 different label values (0 background + 3 organs), skip if not
         if len(np.unique(mask_series_idx)) != 4:
             continue
 
-        image_series_idx = image_array[series_idx]  # 获取当前切片的图像
+        image_series_idx = image_array[series_idx]  # Get the image for the current slice
 
         ################################################################################################################
-        # 将NumPy数组转换回SimpleITK图像格式
+        # Convert NumPy array back to SimpleITK image format
         image_series_sitk = sitk.GetImageFromArray(image_series_idx)
         mask_series_sitk = sitk.GetImageFromArray(mask_series_idx)
 
-        # 设置图像的空间间距信息(从原始图像继承)
+        # Set the spatial spacing information of the image (inherited from the original image)
         image_series_sitk.SetSpacing(image_sitk.GetSpacing()[:3])
         mask_series_sitk.SetSpacing(image_sitk.GetSpacing()[:3])
 
-        # 保存处理后的图像和掩码
+        # Save the processed image and mask
         image_save_path = image_save_folder + image_names[idx][:-7] + "_" + str(series_idx) + ".nii.gz"
         mask_save_path = mask_save_folder + mask_names[idx][:-7] + "_" + str(series_idx) + ".nii.gz"
         sitk.WriteImage(image_series_sitk, image_save_path)
