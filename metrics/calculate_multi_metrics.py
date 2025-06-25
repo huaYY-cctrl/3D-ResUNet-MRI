@@ -1,5 +1,4 @@
 import os
-import gc
 import numpy as np
 import pandas as pd
 import SimpleITK as sitk
@@ -7,60 +6,64 @@ from collections import OrderedDict
 
 
 def compute_dice_coefficient(mask_gt, mask_pred):
+    """Calculate Dice Coefficient between two binary masks"""
     if mask_gt.shape != mask_pred.shape:
         return
-    """计算两个二值掩码之间的Dice系数"""
     volume_intersect = (mask_gt & mask_pred).sum()
     volume_sum = mask_gt.sum() + mask_pred.sum()
     return 2 * volume_intersect / volume_sum
 
 
-# 定义左心室、右心室、心肌列表，与标签编号(1-3)对应
+# Define list of heart structures (Left Ventricle, Right Ventricle, Myocardium)
+# Corresponds to label values (1-3) in segmentation masks
 organ_names = ["LV", "RV", "MYO"]
 
-# 初始化有序字典，用于存储所有样本的评估指标
+# Initialize ordered dictionary to store evaluation metrics for all samples
 seg_metrics = OrderedDict()
-seg_metrics['Name'] = list()  # 存储样本名称
+seg_metrics['Name'] = list()  # Store sample names
 for organ in organ_names:
-    seg_metrics['{}_DSC'.format(organ)] = list()  # 为每个器官添加DSC指标列
+    seg_metrics['{}_DSC'.format(organ)] = list()  # Add DSC column for each organ
 
-# 设置金标准和预测结果的文件夹路径
-gt_folder = "D:\\zhuomian\\MMS\\testing_masks_series\\"
-pred_folder = "D:\\zhuomian\\MMS\\testing_images_pred\\"
+# Set paths to ground truth and predicted segmentation folders
+gt_folder = "D:\\PythonProject\\MMS\\test_masks_series\\"
+pred_folder = "D:\\PythonProject\\MMS\\testing_images_pred\\"
 
-# 获取并排序文件夹中的所有文件
+# Get and sort all files in the folders
 gt_names = sorted(os.listdir(gt_folder))
 pred_names = sorted(os.listdir(pred_folder))
 
-# 遍历所有样本
+# Loop through all samples
 for idx in range(len(gt_names)):
-    # 读取金标准和预测分割图像
+    # Read ground truth and predicted segmentation images
     gt_sitk = sitk.ReadImage(gt_folder + gt_names[idx])
     gt_data = sitk.GetArrayFromImage(gt_sitk)
     pred_sitk = sitk.ReadImage(pred_folder + pred_names[idx])
     pred_data = sitk.GetArrayFromImage(pred_sitk)
+
+    # Skip if shapes don't match
     if gt_data.shape != pred_data.shape:
         continue
-    seg_metrics['Name'].append(gt_names[idx])  # 记录当前样本名称
 
-    # 计算每个器官的DSC指标
+    seg_metrics['Name'].append(gt_names[idx])  # Record current sample name
+
+    # Calculate DSC for each organ
     for i in np.arange(1, 4):
-        gt_i = gt_data == i  # 提取当前器官的金标准二值掩码
-        pred_i = pred_data == i  # 提取当前器官的预测二值掩码
+        gt_i = gt_data == i  # Extract binary mask for current organ (ground truth)
+        pred_i = pred_data == i  # Extract binary mask for current organ (prediction)
 
-        # 处理特殊情况：
+        # Handle special cases:
         if np.sum(gt_i) == 0 and np.sum(pred_i) == 0:
-            dsc = 1  # 两者都不存在，视为完全匹配
+            dsc = 1  # Both are empty, considered perfect match
         elif np.sum(gt_i) == 0 and np.sum(pred_i) > 0:
-            dsc = 0  # 假阳性
+            dsc = 0  # False positive
         elif np.sum(gt_i) > 0 and np.sum(pred_i) == 0:
-            dsc = 0  # 假阴性
+            dsc = 0  # False negative
         else:
-            dsc = compute_dice_coefficient(gt_i, pred_i)  # 正常计算Dice系数
+            dsc = compute_dice_coefficient(gt_i, pred_i)  # Normal Dice calculation
 
-        # 将计算结果存入字典
+        # Store result in dictionary
         seg_metrics['{}_DSC'.format(organ_names[i - 1])].append(dsc)
 
-# 将结果转换为DataFrame并保存为CSV文件
+# Convert results to DataFrame and save as CSV file
 dataframe = pd.DataFrame(seg_metrics)
 dataframe.to_csv("dsc.csv", index=False)
