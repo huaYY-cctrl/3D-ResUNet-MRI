@@ -1,96 +1,94 @@
 import torch
 import torch.nn as nn
 from torchinfo import summary
-
+# UNet3DMMS is a 3D medical image segmentation model. It is:
+# Based on U-Net architecture with encoder-decoder structure.
+# Uses residual connections to make training easier, which can solve the problems of gradient disappearance and
+# gradient explosion in deep neural networks.
+# Has skip connections to keep detailed information.
+# Works on 3D medical images (like MRI/CT) for heart structure segmentation.
 
 class Conv3D_Block(nn.Module):
     def __init__(self, in_feat, out_feat, kernel=3, stride=1, padding=1, residual=True):
         """
-        3D卷积模块，可选择是否包含残差连接
+        3D Convolutional Block with optional residual connection
 
-        参数:
-            in_feat (int): 输入特征图的通道数
-            out_feat (int): 输出特征图的通道数
-            kernel (int): 卷积核大小，默认3
-            stride (int): 步长，默认1
-            padding (int): 填充大小，默认1
-            residual (bool): 是否使用残差连接，默认True
+        Args:
+            in_feat (int): Number of input channels
+            out_feat (int): Number of output channels
+            kernel (int): Convolution kernel size, default 3
+            stride (int): Convolution stride, default 1
+            padding (int): Convolution padding, default 1
+            residual (bool): Whether to use residual connection, default True
         """
         super(Conv3D_Block, self).__init__()
 
-        # 定义主路径的两层3D卷积结构
+        # Define the main path with two 3D convolutional layers
         self.conv = nn.Sequential(
-            # 第一层卷积 + BN + ReLU
+            # First convolution + BN + ReLU
             nn.Conv3d(in_feat, out_feat, kernel_size=kernel, stride=stride, padding=padding, bias=True),
             nn.BatchNorm3d(out_feat),
             nn.ReLU(inplace=True),
 
-            # 第二层卷积 + BN + ReLU
+            # Second convolution + BN + ReLU
             nn.Conv3d(out_feat, out_feat, kernel_size=kernel, stride=stride, padding=padding, bias=True),
             nn.BatchNorm3d(out_feat),
             nn.ReLU(inplace=True)
         )
 
-        # 残差连接标志
+        # Residual connection flag
         self.residual = residual
 
-        # 如果启用残差连接，需要定义1x1x1卷积来匹配维度
+        # If residual connection is enabled, 1x1x1 convolution is needed to match dimensions
         if self.residual:
             self.residual_conv = nn.Conv3d(in_feat, out_feat, kernel_size=1, stride=1, padding=0, bias=False)
 
     def forward(self, x):
-        """
-        前向传播函数
-
-        参数:
-            x (torch.Tensor): 输入张量 [B, C, D, H, W]
-
-        返回:
-            torch.Tensor: 输出张量
-        """
-        # 保存输入作为残差
+        # Save input for residual
         res = x
 
-        # 如果启用残差连接，返回卷积结果 + 残差连接
+        # If residual connection is enabled, return convolution result + residual
         if self.residual:
             return self.conv(x) + self.residual_conv(res)
         else:
-            # 否则只返回卷积结果
+            # Otherwise return only the convolution result
             return self.conv(x)
 
 
 class Up_Block(nn.Module):
     def __init__(self, init_feat, scale_factor=(2, 2, 2)):
         """
-        3D上采样模块，用于UNet架构中的解码器部分
+        3D Upsampling Block for decoder part of UNet architecture
 
-        参数:
-            init_feat (int): 输入特征图的通道数
-            scale_factor (tuple): 上采样的缩放因子，默认(2, 2, 2)表示在深度、高度和宽度上都放大2倍
+        Args:
+            init_feat (int): Number of input channels
+            scale_factor (tuple): Upsampling scale factor, default (2, 2, 2)
+                                  indicates doubling in depth, height and width
         """
         super(Up_Block, self).__init__()
 
-        # 定义3D三线性上采样层，使用align_corners=True保持角点对齐
-        # align_corners=True 更适合需要严格保持几何形状的任务（如医学图像）边界区域的精确性至关重要
+        # Define 3D trilinear upsampling layer with align_corners=True for better geometric alignment
+        # align_corners=True is more suitable for tasks requiring strict geometric preservation
+        # (e.g., medical images) where boundary accuracy is critical
         self.up = nn.Upsample(scale_factor=scale_factor, mode="trilinear", align_corners=True)
 
-        # 定义3x3卷积层，将通道数减半
+        # Define 3x3 convolution layer to reduce the number of channels by half
         self.conv = nn.Conv3d(init_feat, int(init_feat / 2), kernel_size=3, stride=1, padding=1, bias=True)
 
     def forward(self, x):
         """
-        前向传播函数
+        Forward pass
 
-        参数:
-            x (torch.Tensor): 输入张量 [B, C, D, H, W]
+        Args:
+            x (torch.Tensor): Input tensor [B, C, D, H, W]
 
-        返回:
-            torch.Tensor: 输出张量 [B, C/2, D*2, H*2, W*2]
+        Returns:
+            torch.Tensor: Output tensor [B, C/2, D*2, H*2, W*2]
         """
-        # 执行上采样操作，增大空间维度
+        # Perform upsampling to increase spatial dimensions
         out = self.up(x)
 
-        # 通过卷积减少通道数，同时提取特征
+        # Reduce channel count via convolution while extracting features
         out = self.conv(out)
 
         return out
@@ -99,60 +97,61 @@ class Up_Block(nn.Module):
 class UNet3DMMS(nn.Module):
     def __init__(self, input_ch=1, output_ch=4, init_feats=16):
         """
-        多尺度3D UNet模型，专为心脏MRI分割设计
+        Multi-scale 3D UNet model designed for cardiac MRI segmentation
 
-        参数:
-            input_ch (int): 输入通道数，默认1（灰度MRI）
-            output_ch (int): 输出通道数，默认4（对应不同心脏结构类别）
-            init_feats (int): 初始特征通道数，默认16
+        Args:
+            input_ch (int): Number of input channels, default 1 (grayscale MRI)
+            output_ch (int): Number of output channels, default 4 (corresponding to different cardiac structures)
+            init_feats (int): Initial number of feature channels, default 16
         """
         super(UNet3DMMS, self).__init__()
 
-        # 编码器部分：使用不同kernel_size的MaxPool3d实现多尺度下采样
-        # 采用非对称池化策略，更好地处理3D医学图像的各向异性特性
-        self.pool1 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))  # 仅在H/W维度下采样
-        self.pool2 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))  # 在D/H/W维度下采样
+        # Encoder part: Use MaxPool3d with different kernel sizes for multi-scale downsampling
+        # Asymmetric pooling strategy to better handle anisotropic properties of 3D medical images
+        self.pool1 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))  # Downsample only in H/W dimensions
+        self.pool2 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))  # Downsample in D/H/W dimensions
         self.pool3 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
         self.pool4 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
         self.pool5 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
-        # 解码器部分：使用Up_Block实现上采样，逐步恢复空间分辨率
+        # Decoder part: Use Up_Block for upsampling to gradually restore spatial resolution
         self.up7 = Up_Block(init_feat=init_feats * 32, scale_factor=(1, 2, 2))
         self.up8 = Up_Block(init_feat=init_feats * 16, scale_factor=(2, 2, 2))
         self.up9 = Up_Block(init_feat=init_feats * 8, scale_factor=(1, 2, 2))
         self.up10 = Up_Block(init_feat=init_feats * 4, scale_factor=(2, 2, 2))
         self.up11 = Up_Block(init_feat=init_feats * 2, scale_factor=(1, 2, 2))
 
-        # 卷积块：使用带残差连接的3D卷积块(Conv3D_Block)增强特征提取能力
+        # Convolutional blocks: Use 3D convolutional blocks with residual connections (Conv3D_Block)
+        # to enhance feature extraction capabilities
         self.conv1 = Conv3D_Block(in_feat=input_ch, out_feat=init_feats)
         self.conv2 = Conv3D_Block(in_feat=init_feats, out_feat=init_feats * 2)
         self.conv3 = Conv3D_Block(in_feat=init_feats * 2, out_feat=init_feats * 4)
         self.conv4 = Conv3D_Block(in_feat=init_feats * 4, out_feat=init_feats * 8)
         self.conv5 = Conv3D_Block(in_feat=init_feats * 8, out_feat=init_feats * 16)
-        self.conv6 = Conv3D_Block(in_feat=init_feats * 16, out_feat=init_feats * 32)  # 瓶颈层
+        self.conv6 = Conv3D_Block(in_feat=init_feats * 16, out_feat=init_feats * 32)  # Bottleneck layer
 
-        # 解码器卷积块
+        # Decoder convolutional blocks
         self.conv7 = Conv3D_Block(in_feat=init_feats * 32, out_feat=init_feats * 16)
         self.conv8 = Conv3D_Block(in_feat=init_feats * 16, out_feat=init_feats * 8)
         self.conv9 = Conv3D_Block(in_feat=init_feats * 8, out_feat=init_feats * 4)
         self.conv10 = Conv3D_Block(in_feat=init_feats * 4, out_feat=init_feats * 2)
         self.conv11 = Conv3D_Block(in_feat=init_feats * 2, out_feat=init_feats)
 
-        # 最终1x1卷积层：将特征映射转换为类别预测
+        # Final 1x1x1 convolution layer: Convert feature maps to class predictions
         self.conv12 = nn.Conv3d(init_feats, output_ch, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         """
-        前向传播函数
+        Forward pass
 
-        参数:
-            x (torch.Tensor): 输入张量 [B, C, D, H, W]
+        Args:
+            x (torch.Tensor): Input tensor [B, C, D, H, W]
 
-        返回:
-            torch.Tensor: 输出分割结果 [B, num_classes, D, H, W]
+        Returns:
+            torch.Tensor: Output segmentation result [B, num_classes, D, H, W]
         """
-        # 编码器路径：特征提取与下采样
-        conv1 = self.conv1(x)  # 第一次卷积，保留原始分辨率特征
+        # Encoder path: Feature extraction and downsampling
+        conv1 = self.conv1(x)  # First convolution, retain features at original resolution
         pool1 = self.pool1(conv1)
 
         conv2 = self.conv2(pool1)
@@ -167,11 +166,11 @@ class UNet3DMMS(nn.Module):
         conv5 = self.conv5(pool4)
         pool5 = self.pool5(conv5)
 
-        conv6 = self.conv6(pool5)  # 瓶颈层，捕获高级抽象特征
+        conv6 = self.conv6(pool5)  # Bottleneck layer, capture high-level abstract features
 
-        # 解码器路径：上采样与特征融合（跳跃连接）
+        # Decoder path: Upsampling and feature fusion (skip connections)
         up7 = self.up7(conv6)
-        conv7 = self.conv7(torch.cat([conv5, up7], dim=1))  # 融合编码器和解码器特征
+        conv7 = self.conv7(torch.cat([conv5, up7], dim=1))  # Fusion of encoder and decoder features
 
         up8 = self.up8(conv7)
         conv8 = self.conv8(torch.cat([conv4, up8], dim=1))
@@ -185,13 +184,13 @@ class UNet3DMMS(nn.Module):
         up11 = self.up11(conv10)
         conv11 = self.conv11(torch.cat([conv1, up11], dim=1))
 
-        # 最终分类层：将特征映射转换为类别预测
+        # Final classification layer: Convert feature maps to class predictions
         conv12 = self.conv12(conv11)
 
         return conv12
 
 
 if __name__ == '__main__':
-    device = torch.device("cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = UNet3DMMS(1, 4).to(device)
     summary(model, (1, 1, 16, 128, 128))
