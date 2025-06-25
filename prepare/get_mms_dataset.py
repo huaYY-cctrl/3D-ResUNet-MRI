@@ -10,10 +10,10 @@ preprocess step 1
 ########################################################################################################################
 
 
-dataset_folders_folder = "D:\\zhuomian\\MMS\\Testing\\"
+dataset_folders_folder = "D:\\PythonProject\\MMS\\Testing\\"
 dataset_folders = sorted(os.listdir(dataset_folders_folder))
-image_save_folder = "D:\\zhuomian\\MMS\\testing_images\\"
-mask_save_folder = "D:\\zhuomian\\MMS\\testing_masks\\"
+image_save_folder = "D:\\PythonProject\\MMS\\test_images\\"
+mask_save_folder = "D:\\PythonProject\\MMS\\test_masks\\"
 
 for dataset_folder in dataset_folders:
     dataset_folder_all = dataset_folders_folder + dataset_folder + "\\"
