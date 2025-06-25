@@ -9,6 +9,7 @@ from monai.losses import DiceCELoss # 导入MONAI的Dice+CE组合损失
 from torch.utils.data import DataLoader
 from generators.image_label_generator import Image_Label_train, Image_Label_valid # 导入自定义数据集类
 
+
 def eval(net, dataloader):
     """验证集评估函数
         参数:
@@ -32,15 +33,15 @@ def eval(net, dataloader):
 #################################################################
 # 超参数配置
 epoches = 1000 # 总训练轮数
-batch_size = 3 # 批量大小
+batch_size = 5 # 批量大小
 init_learning_rate = 0.0005 # 初始学习率
 learning_rate_patience = 8 # 学习率调整耐心值（验证损失不下降的轮数）
 learning_rate_factor = 0.5 # 学习率衰减因子
 modelsave_path = "..\\modelsave\\UNet\\MMS\\" # 模型保存路径
-train_image_patch_folder = "D:\\zhuomian\\MMS\\train_images_patches\\" # 训练集图像块路径
-train_label_patch_folder = "D:\\zhuomian\\MMS\\train_masks_patches\\" # 训练集标签块路径
-validation_image_patch_folder = "D:\\zhuomian\\MMS\\validation_images_patches\\" # 验证集图像块路径
-validation_label_patch_folder = "D:\\zhuomian\\MMS\\validation_masks_patches\\" # 验证集标签块路径
+train_image_patch_folder = "D:\\PythonProject\\MMS\\train_images_patches\\" # 训练集图像块路径
+train_label_patch_folder = "D:\\PythonProject\\MMS\\train_masks_patches\\" # 训练集标签块路径
+validation_image_patch_folder = "D:\\PythonProject\\MMS\\validation_images_patches\\" # 验证集图像块路径
+validation_label_patch_folder = "D:\\PythonProject\\MMS\\validation_masks_patches\\" # 验证集标签块路径
 #################################################################
 
 # 设备配置（优先使用GPU）
@@ -156,7 +157,7 @@ def main():
         # 将平均验证损失值写入Excel表格的第4列（第一行）
         # 这里将验证损失与之前记录的训练平均损失（第3列）放在同一行，便于对比
         table.cell(row=1, column=4, value=loss_valid)
-        file.save(modelsave_path + "UNet_%06d.xlsx" % (epoch + 1))
+        file.save(modelsave_path + "ResUNet_%06d.xlsx" % (epoch + 1))
         # 更新学习率调度器（根据平均验证损失调整学习率） 学习率调整后，模型会使用更小的步长继续训练，有助于更精细地收敛到最优解
         # 提高泛化能力：适当的学习率衰减可以减少过拟合，使模型在验证集上表现更好
         # 防止训练停滞：当模型接近最优解时，较小的学习率有助于精细调整参数，避免跳过最优解
@@ -164,7 +165,7 @@ def main():
             scheduler.step(loss_valid)
         # ---------------------- 7. 模型保存（每10轮保存一次） ----------------------
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), modelsave_path + "UNet_%06d.pth" % (epoch + 1))
+            torch.save(model.state_dict(), modelsave_path + "ResUNet_%06d.pth" % (epoch + 1))
 
 
 if __name__ == '__main__':
