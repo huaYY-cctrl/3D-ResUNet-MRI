@@ -15,17 +15,17 @@ preprocess step 1
 ########################################################################################################################
 # 设置目标体素尺寸（毫米），X、Y、Z方向 ，对应值是通过Excel数据集体素尺寸求平均值得来
 # 这是预处理的目标分辨率，所有图像都将被重采样到这个体素尺寸
-new_voxel = [1.3064, 1.3064, 9.5391]
+new_voxel = [1.3056, 1.3056, 9.5422]
 ########################################################################################################################
 # 原始图像和标签所在的文件夹路径
-ori_image_folder = "D:\\zhuomian\\MMS\\validation_images_series\\"
-ori_label_folder = "D:\\zhuomian\\MMS\\validation_masks_series\\"
+ori_image_folder = "D:\\PythonProject\\MMS\\validation_images_series\\"
+ori_label_folder = "D:\\PythonProject\\MMS\\validation_masks_series\\"
 # 获取文件夹中所有文件的名称并排序，确保图像和标签对应
 image_names = sorted(os.listdir(ori_image_folder))
 label_names = sorted(os.listdir(ori_label_folder))
 # 重采样(缩放)后图像和标签的保存路径
-image_save_folder = "D:\\zhuomian\\MMS\\validation_images_resized\\"
-label_save_folder = "D:\\zhuomian\\MMS\\validation_images_resized\\"
+image_save_folder = "D:\\PythonProject\\MMS\\validation_images_resized\\"
+label_save_folder = "D:\\PythonProject\\MMS\\validation_masks_resized\\"
 ########################################################################################################################
 
 # 遍历所有图像和标签文件
