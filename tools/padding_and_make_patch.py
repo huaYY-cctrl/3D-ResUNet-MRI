@@ -21,10 +21,10 @@ pad_nx, pad_ny, pad_nz = b_nx // 4, b_ny // 4, b_nz // 4 ## //表示整除
 ########################################################################################################################
 
 # 输入文件夹路径（归一化后的图像和重采样后的标签）
-image_folder = "D:\\zhuomian\\MMS\\validation_images_normalized\\"
-label_folder = "D:\\zhuomian\\MMS\\validation_masks_resized\\"
-image_patch_save_folder = "D:\\zhuomian\\MMS\\validation_images_patches\\"
-label_patch_save_folder = "D:\\zhuomian\\MMS\\validation_masks_patches\\"
+image_folder = "D:\\PythonProject\\MMS\\validation_images_normalized\\"
+label_folder = "D:\\PythonProject\\MMS\\validation_masks_resized\\"
+image_patch_save_folder = "D:\\PythonProject\\MMS\\validation_images_patches\\"
+label_patch_save_folder = "D:\\PythonProject\\MMS\\validation_masks_patches\\"
 # 获取文件名列表并排序, 确保图像和标签对应
 image_names = sorted(os.listdir(image_folder))
 label_names = sorted(os.listdir(label_folder))
@@ -48,8 +48,8 @@ for idx in range(len(image_names)):
     # - 原因1：卷积神经网络（如3D U-Net）在处理边缘时，由于Padding操作会引入人工边界值（如0），导致边缘区域的特征可信度较低。
     # - 原因2：分块时若原始图像尺寸无法被子块尺寸整除，补零可使图像尺寸适配分块计算。。
     # - 操作：在X/Y/Z三个方向的两侧均补零，补零宽度为子块尺寸的1/4（pad_nx=24, pad_ny=24, pad_nz=16）
-    image_array = np.pad(image_array, [(pad_nz, pad_nz), (pad_ny, pad_ny), (pad_nx, pad_nx)], mode="constant", constant_values=0)
-    label_array = np.pad(label_array, [(pad_nz, pad_nz), (pad_ny, pad_ny), (pad_nx, pad_nx)], mode="constant", constant_values=0)
+    image_array = np.pad(image_array, ((pad_nz, pad_nz), (pad_ny, pad_ny), (pad_nx, pad_nx)), mode="constant", constant_values=0)
+    label_array = np.pad(label_array, ((pad_nz, pad_nz), (pad_ny, pad_ny), (pad_nx, pad_nx)), mode="constant", constant_values=0)
     # 获取补零后的图像尺寸
     v_nx = image_array.shape[2] # X方向尺寸（列）
     v_ny = image_array.shape[1] # Y方向尺寸（行）
@@ -87,7 +87,7 @@ for idx in range(len(image_names)):
                 label_patch = label_array[z_start: z_start + b_nz, y_start: y_start + b_ny, x_start: x_start + b_nx]
 
                 # 以numpy格式保存图像和标签子块
-                np.save(image_patch_save_folder + "mms_validation_" + str(idx).rjust(4, '0') + "_" + str(current_patch_id).rjust(4, '0') + '.npy', image_patch)
-                np.save(label_patch_save_folder + "mms_validation_" + str(idx).rjust(4, '0') + "_" + str(current_patch_id).rjust(4, '0') + '.npy', label_patch)
+                np.save(image_patch_save_folder + "mms_train_" + str(idx).rjust(4, '0') + "_" + str(current_patch_id).rjust(4, '0') + '.npy', image_patch)
+                np.save(label_patch_save_folder + "mms_train_" + str(idx).rjust(4, '0') + "_" + str(current_patch_id).rjust(4, '0') + '.npy', label_patch)
                 current_patch_id = current_patch_id + 1
 
