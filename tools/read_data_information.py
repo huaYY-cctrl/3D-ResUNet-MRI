@@ -5,7 +5,7 @@ from openpyxl import Workbook
 #此文件的主要作用是批量读取医学图像数据集中的 NIfTI 格式文件，提取关键信息（如体素尺寸、图像维度等），并将这些信息整理保存到 Excel 表格中，方便后续分析和处理
 
 # 设置NIfTI图像文件所在的文件夹路径
-file_folder = "D:\\zhuomian\\MMS\\train_images_series\\"
+file_folder = "D:\\PythonProject\\MMS\\train_images_series\\"
 # 获取文件夹中所有文件的名称并按字母顺序排序
 file_names = sorted(os.listdir(file_folder))
 
