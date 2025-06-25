@@ -12,9 +12,9 @@ preprocess step 2
 ########################################################################################################################
 
 # 原始图像文件夹路径（重采样后的图像）
-ori_image_folder = "D:\\zhuomian\\MMS\\validation_images_resized\\"
+ori_image_folder = "D:\\PythonProject\\MMS\\validation_images_resized\\"
 # 归一化后图像的保存路径
-image_save_folder = "D:\\zhuomian\\MMS\\validation_images_normalized\\"
+image_save_folder = "D:\\PythonProject\\MMS\\validation_images_normalized\\"
 # 获取文件夹中所有图像文件名并排序
 image_names = sorted(os.listdir(ori_image_folder))
 # 遍历处理所有图像
